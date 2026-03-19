@@ -15,17 +15,23 @@ description: >
 
 Generate a structured implementation plan and copy it to the clipboard.
 
-## When to Use
+## IMPORTANT: Enter Plan Mode first
 
-- Starting work on a new feature, bugfix, or refactoring task
-- Breaking down a large task into independently executable TODO items
-- Before entering the execution loop of clear-command-driven-dev
+Before doing anything else, enter Plan Mode. Do not write or modify any code.
+Plan Mode allows you to explore the codebase read-only and design the plan
+without making changes.
 
 ## Process
 
 ### Step 1: Gather Context
 
-Before generating the plan, understand:
+The user's request: $ARGUMENTS
+
+If `$ARGUMENTS` is provided, use it as the task description.
+If empty, use the conversation context to understand what to plan.
+If neither provides enough detail, ask the user what feature or task to plan.
+
+In Plan Mode, explore the codebase to understand:
 
 - What feature or task is being implemented?
 - What is the codebase structure? (modules, layers, directories)

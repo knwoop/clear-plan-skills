@@ -17,22 +17,31 @@ description: >
 Revise an existing plan based on new information and copy the updated
 version to the clipboard.
 
-## When to Use
+## IMPORTANT: Enter Plan Mode first
 
-- During the execution loop, when implementation reveals something unexpected
-- After code review feedback that changes scope or approach
-- When a dependency or API behaves differently than expected
-- When TODO items need to be split, reordered, or removed
-- After discussing with team members and adjusting requirements
+Before doing anything else, enter Plan Mode. Do not write or modify any code.
+Plan Mode allows you to explore the codebase read-only and revise the plan
+without making changes.
 
 ## Process
 
 ### Step 1: Receive the Current Plan and Changes
 
+What changed: $ARGUMENTS
+
+If `$ARGUMENTS` is provided, use it as the description of what changed.
+If empty, use the conversation context to understand the changes.
+If neither provides enough detail, ask the user what changed.
+
 The user provides:
 
 1. **The current plan** — pasted from their notes (full or partial)
 2. **What changed** — described in natural language
+
+If the current plan is not provided in the conversation or arguments,
+ask the user to choose:
+- Paste the current plan
+- Infer from conversation context
 
 Common types of changes:
 
