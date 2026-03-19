@@ -1,0 +1,19 @@
+{
+  "name": "knwoop-clear-plan-skills",
+  "owner": {
+    "name": "knwoop"
+  },
+  "metadata": {
+    "description": "Clear Command Driven Development — plan, clear, execute workflow for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "clear-plan-skills",
+      "source": "./",
+      "description": "Skills for plan-driven development with /clear between each TODO",
+      "license": "MIT",
+      "keywords": ["plan", "workflow", "clear", "todo"],
+      "category": "productivity"
+    }
+  ]
+}
