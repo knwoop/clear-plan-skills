@@ -21,26 +21,68 @@ Before doing anything else, enter Plan Mode. Do not write or modify any code.
 Plan Mode allows you to explore the codebase read-only and design the plan
 without making changes.
 
-## Process
-
-### Step 1: Gather Context
+## Phase 1: Receive Task
 
 The user's request: $ARGUMENTS
 
-If `$ARGUMENTS` is provided, use it as the task description.
-If empty, use the conversation context to understand what to plan.
-If neither provides enough detail, ask the user what feature or task to plan.
+If `$ARGUMENTS` is provided, use it as the initial task description.
+If empty, ask the user what feature or task to plan.
+Do not proceed to Phase 2 until you have a clear task description.
 
-In Plan Mode, explore the codebase to understand:
+## Phase 2: Clarify Requirements
 
-- What feature or task is being implemented?
-- What is the codebase structure? (modules, layers, directories)
-- Are there existing similar implementations to reference?
-- What are the edge cases or conditional logic involved?
+Use `AskUserQuestion` to interactively clarify the following:
 
-### Step 2: Generate the Plan
+- **Goal**: What is the desired outcome? What does "done" look like?
+- **Scope**: Which modules, directories, or layers are involved?
+- **Constraints**: Are there performance, compatibility, or deadline constraints?
+- **Edge cases**: Are there known edge cases or conditional logic to handle?
+- **References**: Are there related PRs, docs, or existing implementations to reference?
 
-Output the plan following the format in [references/plan-format.md](../../references/plan-format.md).
+Ask one or two questions at a time. Do not overwhelm the user with all questions at once.
+Continue until you have enough information to generate a solid plan.
+
+## Phase 3: Research (Parallel Subagents)
+
+Based on the task and requirements clarified in Phase 1-2, design and launch
+subagents tailored to the specific research needs. Do not use a fixed set of agents —
+decide what research is needed for this particular task.
+
+### How to design agents
+
+1. Identify the distinct areas of research needed (codebase, external docs, dependencies, etc.)
+2. Create one agent per area, each with a focused responsibility
+3. Choose the appropriate subagent_type for each:
+   - `Explore` — for codebase exploration (file structure, existing code, patterns)
+   - `Plan` — for analysis (dependencies, impact, implementation order)
+   - Use `WebSearch` / `WebFetch` in agents that need to research external documentation
+4. Launch all agents in parallel using the Agent tool
+5. Pass each agent a summary of the task and clarified requirements
+
+### Examples
+
+**Example: Adding a new domain to CDN via GCS**
+- Agent 1 (Explore): Search Terraform codebase for existing domain/bucket configurations
+- Agent 2 (Explore + WebSearch): Research Fastly CDN configuration and official docs
+- Agent 3 (Explore): Investigate GCS bucket setup patterns in the codebase
+- Agent 4 (Plan): Analyze DNS, SSL, and deployment dependencies
+
+**Example: Adding a REST API endpoint**
+- Agent 1 (Explore): Find existing API endpoint patterns and conventions
+- Agent 2 (Explore): Investigate DB schema and repository layer
+- Agent 3 (Explore): Search for related test patterns and fixtures
+
+**Example: Refactoring authentication middleware**
+- Agent 1 (Explore): Map all usage of current auth middleware across the codebase
+- Agent 2 (Plan): Analyze breaking changes and migration path
+- Agent 3 (Explore + WebSearch): Research the target auth library's official docs
+
+Wait for all agents to complete before proceeding to Phase 4.
+
+## Phase 4: Present Draft Plan
+
+Synthesize the results from all subagents and the clarified requirements
+to generate a draft plan following the format in [references/plan-format.md](../../references/plan-format.md).
 
 Key points:
 - Start with What — clarify the goal and why it matters before diving into details
@@ -51,21 +93,23 @@ Key points:
 - Add a decision table when conditional logic is complex
 - List all relevant files, PRs, and documents in References
 
-### Step 3: Copy to Clipboard
-
-After generating the plan, copy it to the clipboard using the platform-appropriate command:
-- macOS: `pbcopy`
-- Linux (X11): `xclip -selection clipboard` or `xsel --clipboard --input`
-- Linux (Wayland): `wl-copy`
-- WSL: `clip.exe`
-
-Always inform the user that the plan has been copied to their clipboard
-so they can paste it into their preferred note-taking app.
+Present the draft to the user and ask for confirmation or changes.
 
 ## Output Format
 
 See [references/plan-format.md](../../references/plan-format.md) for the complete
 format specification with examples.
+
+## Phase 5: Finalize and Copy to Clipboard
+
+After the user confirms the plan, copy it to the clipboard using the platform-appropriate command:
+- macOS: `pbcopy`
+- Linux (X11): `xclip -selection clipboard` or `xsel --clipboard --input`
+- Linux (Wayland): `wl-copy`
+- WSL: `clip.exe`
+
+Inform the user that the plan has been copied to their clipboard
+so they can paste it into their preferred note-taking app.
 
 ## Guidelines
 
