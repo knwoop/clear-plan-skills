@@ -31,16 +31,37 @@ Do not proceed to Phase 2 until you have a clear task description.
 
 ## Phase 2: Clarify Requirements
 
-Use `AskUserQuestion` to interactively clarify the following:
+Use `AskUserQuestion` to deepen your understanding of the task through natural conversation.
+Do not follow a fixed checklist — adapt your questions based on what the user has already
+told you and what you still need to know to generate actionable TODO items.
 
-- **Goal**: What is the desired outcome? What does "done" look like?
-- **Scope**: Which modules, directories, or layers are involved?
-- **Constraints**: Are there performance, compatibility, or deadline constraints?
-- **Edge cases**: Are there known edge cases or conditional logic to handle?
-- **References**: Are there related PRs, docs, or existing implementations to reference?
+### What you need to know (not a script to follow)
 
-Ask one or two questions at a time. Do not overwhelm the user with all questions at once.
-Continue until you have enough information to generate a solid plan.
+Your goal is to gather enough context so that each TODO item you generate later is
+unambiguous and independently implementable. Work backward from that goal:
+
+- **What is ambiguous?** If the task description leaves room for interpretation,
+  ask about the intended behavior or expected output.
+- **What decisions haven't been made?** Surface implicit choices the user may not
+  have considered (e.g., "Should this be synchronous or async?", "Do we need backward
+  compatibility?").
+- **What does the user know that you don't?** Ask about business context, prior
+  attempts, team conventions, or constraints that aren't visible in the codebase.
+- **What would block implementation?** Identify unknowns that would force you to
+  stop mid-task and ask (e.g., "Which API endpoint should this call?", "What happens
+  when X fails?").
+
+### How to ask
+
+- Ask two or three questions at a time. Do not overwhelm the user.
+- Frame questions as concrete choices or scenarios when possible
+  (e.g., "When the token expires, should we retry silently or show an error to the user?")
+  rather than open-ended ("What about error handling?").
+- If the user's answer reveals a new area of complexity, follow up on it
+  before moving to the next topic.
+- Do not move on by yourself. When you believe you have enough information,
+  summarize what you understood and ask the user to confirm before proceeding:
+  "Here is my understanding so far: ... Shall we move on to research, or is there anything else to clarify?"
 
 ## Phase 3: Research (Parallel Subagents)
 
