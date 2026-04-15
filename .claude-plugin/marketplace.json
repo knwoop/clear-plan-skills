@@ -10,7 +10,7 @@
     {
       "name": "clear-plan-skills",
       "source": "./",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "description": "Skills for plan-driven development with /clear between each TODO",
       "license": "MIT",
       "keywords": ["plan", "workflow", "clear", "todo"],

@@ -11,18 +11,34 @@ Write it so that anyone reading the plan understands the purpose at a glance.
 ```markdown
 ## What
 
-<What is the desired outcome of this work?>
-<Why does it matter? What problem does it solve or what value does it deliver?>
-<What does "done" look like from the user's or system's perspective?>
+<One sentence: what problem disappears when this is done?>
+
+- Done: <observable acceptance criteria — how do you verify it works?>
+- Scope: <what is included>
+- Out of scope: <what is explicitly excluded and why>
+- Why now: <what makes this the right time — urgency, dependency, opportunity>
 ```
 
 ### Writing Guidelines for What
 
-- Describe the end state, not the implementation steps
-- Focus on the user-visible or system-observable change
-- Include the "why" — what motivates this work (user pain, technical debt, business need)
-- Keep it concise: 2-5 sentences is usually enough
-- If the goal can be stated as a single sentence, that's ideal — add context only if needed
+- Lead with the problem being solved, not the solution or technology
+- "Done" must be verifiable — a reviewer should be able to check it without asking
+- Always state what is out of scope — prevents scope creep and sets expectations
+- "Why now" prevents work that has no urgency from blocking what does
+- Do not write a summary or overview — What is a decision tool, not a description
+
+### Good vs Bad Examples
+
+Bad (summary):
+> Introduce Chromatic to host Storybook per PR and improve the review experience.
+
+Good (decision tool):
+> Eliminate the need for reviewers to run Storybook locally during PR review.
+>
+> - Done: Reviewers can view Storybook via a check link on the PR in Chromatic
+> - Scope: web/farm and web/farm-shared (3 Storybooks)
+> - Out of scope: Visual regression testing (snapshot diff detection)
+> - Why now: Reviewer friction is a bottleneck for frontend PRs
 
 ## 2. Requirements
 
