@@ -72,6 +72,6 @@ Plan Mode ──→ Copy to clipboard ──→ Paste into your notes
 
 - Pasting the entire plan into every session (defeats the purpose of `/clear`)
 - Skipping the plan update phase when encountering surprises
-- Making TODO items too large (if one "Done when" list can't cover it, split it)
-- Making TODO items too thin to review (if it has no observable "Done when", merge it)
+- Mixing layers in one TODO (DDL and application code together are hard to review)
+- Making TODO items too large (split a big layer change by feature within that layer)
 - Keeping stale plans — always reflect reality in your notes

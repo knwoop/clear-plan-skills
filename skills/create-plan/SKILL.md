@@ -3,7 +3,7 @@ name: create-plan
 description: >
   Creates a structured implementation plan in Plan Mode and copies it to the
   clipboard. The plan follows a five-section format: What (goal/purpose),
-  Requirements, TODO (grouped by module/directory, each with acceptance
+  Requirements, TODO (split by layer such as DDL, domain, repository, each with acceptance
   criteria and a verification step), References, and
   Verification (end-to-end check and test commands). Use this skill when the user asks to
   "plan a feature", "create a plan", "start planning", "break down a task",
@@ -91,8 +91,12 @@ decide what research is needed for this particular task.
 - Agent 3 (Explore): Investigate GCS bucket setup patterns in the codebase
 - Agent 4 (Plan): Analyze DNS, SSL, and deployment dependencies
 
+Always include identifying the project's layers (directories, dependency
+direction, where migrations live) in one agent's scope — the TODO section is
+split by those layers.
+
 **Example: Adding a REST API endpoint**
-- Agent 1 (Explore): Find existing API endpoint patterns and conventions
+- Agent 1 (Explore): Find existing API endpoint patterns, conventions, and the project's layer structure
 - Agent 2 (Explore): Investigate DB schema and repository layer
 - Agent 3 (Explore): Search for related test patterns and fixtures
 
@@ -111,12 +115,15 @@ first — it is the complete format specification with examples.
 
 Key points:
 - Start with What — clarify the goal and why it matters before diving into details
-- Group TODOs by module/directory
+- Split TODOs by layer, one layer per TODO, using the layers found in the codebase;
+  order the layer headings by dependency (e.g. DDL → domain → repository → usecase → handler)
+- Never mix DDL with application code in one TODO
 - Order tasks by dependency (upstream tasks first)
 - Each TODO must be completable in a single Claude Code session
 - Give every TODO a "Done when" (observable behavior the reviewer checks) and a
   "Verify" (the command or check the implementing session runs)
-- If a TODO has no meaningful "Done when", merge it into the task that first uses it
+- Write each "Done when" at that layer's boundary; if even that is impossible,
+  merge the TODO into the one in the same layer that first uses it
 - Include code examples for non-trivial logic
 - When a TODO has conditional logic, write its "Done when" as a decision table
   scoped to that TODO; use a shared table under Verification only for rules

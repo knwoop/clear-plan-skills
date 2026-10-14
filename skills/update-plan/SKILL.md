@@ -53,7 +53,7 @@ Common types of changes:
 | Scope adjustment | "We decided not to implement restore for v1" |
 | Approach change | "The ORM doesn't support bulk upsert, need to use raw SQL" |
 | New dependency | "This requires a migration to add the deleted_at column first" |
-| Task splitting | "The repository TODO is too large, needs to be split" |
+| Task splitting | "The repository TODO is too large, needs to be split" (split by feature within the layer) |
 | Completed items | "I finished the domain and repository tasks" |
 | Criteria change | "Restore should also work on items deleted by an admin" |
 

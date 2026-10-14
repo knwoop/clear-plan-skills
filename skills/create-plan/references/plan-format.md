@@ -6,7 +6,7 @@ When creating a plan in Plan Mode, use the following five-section format.
 
 1. [What](#1-what) — goal, done criteria, scope, why now
 2. [Requirements](#2-requirements) — rules and constraints
-3. [TODO](#3-todo) — tasks grouped by module/directory, each with Done when / Verify
+3. [TODO](#3-todo) — tasks split by layer (DDL, domain, repository, …), each with Done when / Verify
 4. [References](#4-references) — files, PRs, documents
 5. [Verification](#5-verification) — end-to-end check, test commands, shared decision tables
 6. [Complete Example](#complete-example)
@@ -66,7 +66,9 @@ and not "how do we build it?" (that's TODO).
 
 ## 3. TODO
 
-Group tasks by module or directory.
+Split tasks by layer — one TODO changes one layer, so each TODO is reviewed
+with one kind of expertise (migration safety for DDL, business rules for usecases,
+API contracts for handlers). Headings name the layers in dependency order.
 Each task specifies the target file, the implementation approach, what must be
 true when it is done, and how to check it.
 Include logic or code examples when the approach is non-trivial.
@@ -82,7 +84,7 @@ so it carries its own acceptance criteria and verification:
 ```markdown
 ## TODO
 
-### <module_1>
+### <layer_1> (e.g. DDL)
 
 - [ ] Task name
   → Target file and implementation approach
@@ -92,7 +94,7 @@ so it carries its own acceptance criteria and verification:
     - <observable behavior 2>
   → Verify: `<command that exercises the criteria>`
 
-### <module_2>
+### <layer_2> (e.g. usecase)
 
 - [ ] Task name
   → Implementation approach (can be multiple lines)
@@ -106,6 +108,30 @@ so it carries its own acceptance criteria and verification:
 
   → Verify: `<command>` (one test case per row)
 ```
+
+### Splitting by Layer
+
+- **Use the project's layers.** Take the layer list from the codebase
+  (e.g. `migrations/`, `internal/domain`, `internal/repository`, `internal/usecase`,
+  `internal/handler`), not from a template. For projects without application layers,
+  use the equivalent units of responsibility (e.g. Terraform module, CI config, app code)
+- **Order headings by dependency.** A typical order is
+  DDL → domain → repository → usecase → handler → job / infra
+- **One TODO changes one layer.** Never mix DDL with application code in one TODO —
+  migrations are reviewed for locks, backward compatibility, and rollback, and often
+  deploy separately
+- **Split a large layer change by feature within that layer**, not across layers
+  (e.g. two usecase TODOs: SoftDeleteItem and RestoreItem)
+- **Write "Done when" at the layer's boundary** — what that layer exposes,
+  tested with that layer's tests:
+
+| Layer      | Done when (example)                                              | Verify                  |
+|------------|------------------------------------------------------------------|-------------------------|
+| DDL        | Migration applies and rolls back; column nullable; index exists  | migrate up / down / up  |
+| Domain     | Entity exposes the new field; invalid states are rejected        | domain unit tests       |
+| Repository | Query returns / omits the right rows                             | repository tests        |
+| Usecase    | Decision table of business outcomes                              | usecase tests           |
+| Handler    | Status code and body per outcome                                 | handler tests or `curl` |
 
 ### TODO Writing Guidelines
 
@@ -133,9 +159,9 @@ so it carries its own acceptance criteria and verification:
   Shared Decision Tables and cite it ("Done when: Shared table *Permissions* rows #1–#4 hold")
 - Verify should be one command or a short, concrete manual check
   (e.g. "`curl -X DELETE /items/1` returns 204, then `GET /items` omits it")
-- If you cannot write a meaningful "Done when", the TODO is too thin to review on its own —
-  merge it into the task that first uses it (e.g. a bare field addition merges into
-  the repository change that reads and writes it)
+- A layer-only TODO is fine as long as its "Done when" can be checked at that layer.
+  If even that is impossible (e.g. a constant nothing reads yet), merge it into the
+  TODO in the same layer that first uses it
 
 ## 4. References
 
@@ -230,15 +256,26 @@ Stop users from permanently losing items they deleted by accident.
 
 ## TODO
 
-### db
+### DDL
 
-- [ ] Add nullable deleted_at column to items and the Item entity
-  → `migrations/20261014_add_items_deleted_at.sql`, `src/domain/item.ts`
-  → Nullable timestamp, no default; existing rows stay NULL
+- [ ] Add nullable deleted_at column to items
+  → `migrations/20261014_add_items_deleted_at.sql`
+  → Nullable timestamp, no default (no table rewrite, no backfill); add index on deleted_at for the purge job
   → Done when:
     - Migration applies and rolls back cleanly
-    - Existing items load with `deletedAt === null`
-  → Verify: `npm run migrate && npm run migrate:rollback && npm run migrate && npm test -- --grep "Item"`
+    - Existing rows have `deleted_at = NULL`
+    - Index `items_deleted_at_idx` exists
+  → Verify: `npm run migrate && npm run migrate:rollback && npm run migrate`
+
+### domain
+
+- [ ] Add deletedAt to the Item entity
+  → `src/domain/item.ts`
+  → Nullable `Date`; derive `status` (ACTIVE / DELETED) from it
+  → Done when:
+    - Item with `deletedAt === null` has status ACTIVE
+    - Item with `deletedAt` set has status DELETED
+  → Verify: `npm test -- --grep "Item entity"`
 
 ### repository
 
@@ -278,6 +315,23 @@ Stop users from permanently losing items they deleted by accident.
     | N           | -           | Return NotFound             |
 
   → Verify: `npm test -- --grep "RestoreItem"`
+
+### handler
+
+- [ ] Expose soft-delete and restore endpoints
+  → `src/handler/item_handler.ts`
+  → `DELETE /items/:id` calls SoftDeleteItem; `POST /items/:id/restore` calls RestoreItem
+  → Done when:
+
+    | Endpoint                | Usecase Result | Response   |
+    |-------------------------|----------------|------------|
+    | DELETE /items/:id       | OK             | 204        |
+    | DELETE /items/:id       | AlreadyDeleted | 409        |
+    | POST /items/:id/restore | OK             | 200 + item |
+    | POST /items/:id/restore | AlreadyActive  | 409        |
+    | -                       | NotFound       | 404        |
+
+  → Verify: `npm test -- --grep "item_handler"`
 
 ### job
 
