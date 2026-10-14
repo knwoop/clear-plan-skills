@@ -1,9 +1,9 @@
 ---
 name: clear-command-driven-dev
 description: >
-  A development workflow methodology: plan with Plan Mode, copy the plan to
-  clipboard, execute TODOs one at a time with /clear between each task, and
-  update the plan when new information emerges. Use this skill when the user
+  Explains a development workflow methodology: plan with Plan Mode, copy the
+  plan to clipboard, execute TODOs one at a time with /clear between each task,
+  and update the plan when new information emerges. Use this skill when the user
   asks about "clear command driven development", "clear-driven workflow",
   "how to structure Claude Code sessions", or wants an overview of the
   plan-clear-execute cycle. For creating a new plan, see /create-plan.
