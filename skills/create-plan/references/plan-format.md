@@ -6,9 +6,9 @@ When creating a plan in Plan Mode, use the following five-section format.
 
 1. [What](#1-what) — goal, done criteria, scope, why now
 2. [Requirements](#2-requirements) — rules and constraints
-3. [TODO](#3-todo) — tasks grouped by module/directory
+3. [TODO](#3-todo) — tasks split by layer (DDL, domain, repository, …), each with Done when / Verify
 4. [References](#4-references) — files, PRs, documents
-5. [Verification](#5-verification) — decision table and test commands
+5. [Verification](#5-verification) — end-to-end check, test commands, shared decision tables
 6. [Complete Example](#complete-example)
 
 ## 1. What
@@ -66,35 +66,102 @@ and not "how do we build it?" (that's TODO).
 
 ## 3. TODO
 
-Group tasks by module or directory.
-Each task specifies the target file and implementation approach.
+Split tasks by layer — one TODO changes one layer, so each TODO is reviewed
+with one kind of expertise (migration safety for DDL, business rules for usecases,
+API contracts for handlers). Headings name the layers in dependency order.
+Each task specifies the target file, the implementation approach, what must be
+true when it is done, and how to check it.
 Include logic or code examples when the approach is non-trivial.
+
+Each TODO is implemented in a fresh session after `/clear` and reviewed on its own,
+so it carries its own acceptance criteria and verification:
+
+- **Done when** — for the reviewer: observable behavior that must hold after the change.
+  The reviewer checks the change against this list instead of reconstructing intent from the diff.
+- **Verify** — for the implementing session: the command or check that proves
+  the criteria hold before handing the change to review.
 
 ```markdown
 ## TODO
 
-### <module_1>
+### <layer_1> (e.g. DDL)
 
 - [ ] Task name
   → Target file and implementation approach
   → Include code examples as needed
+  → Done when:
+    - <observable behavior 1>
+    - <observable behavior 2>
+  → Verify: `<command that exercises the criteria>`
 
-### <module_2>
+### <layer_2> (e.g. usecase)
 
 - [ ] Task name
   → Implementation approach (can be multiple lines)
-  → Details of conditions or logic:
-    1. If condition A → Process A
-    2. If condition B → Process B
+  → Done when:
+
+    | Condition A | Condition B | Expected Result |
+    |-------------|-------------|-----------------|
+    | Y           | Y           | Result 1        |
+    | Y           | N           | Result 2        |
+    | N           | -           | Result 3        |
+
+  → Verify: `<command>` (one test case per row)
 ```
+
+### Splitting by Layer
+
+- **Use the project's layers.** Take the layer list from the codebase
+  (e.g. `migrations/`, `internal/domain`, `internal/repository`, `internal/usecase`,
+  `internal/handler`), not from a template. For projects without application layers,
+  use the equivalent units of responsibility (e.g. Terraform module, CI config, app code)
+- **Order headings by dependency.** A typical order is
+  DDL → domain → repository → usecase → handler → job / infra
+- **One TODO changes one layer.** Never mix DDL with application code in one TODO —
+  migrations are reviewed for locks, backward compatibility, and rollback, and often
+  deploy separately
+- **Split a large layer change by feature within that layer**, not across layers
+  (e.g. two usecase TODOs: SoftDeleteItem and RestoreItem)
+- **Write "Done when" at the layer's boundary** — what that layer exposes,
+  tested with that layer's tests:
+
+| Layer      | Done when (example)                                              | Verify                  |
+|------------|------------------------------------------------------------------|-------------------------|
+| DDL        | Migration applies and rolls back; column nullable; index exists  | migrate up / down / up  |
+| Domain     | Entity exposes the new field; invalid states are rejected        | domain unit tests       |
+| Repository | Query returns / omits the right rows                             | repository tests        |
+| Usecase    | Decision table of business outcomes                              | usecase tests           |
+| Handler    | Status code and body per outcome                                 | handler tests or `curl` |
 
 ### TODO Writing Guidelines
 
 - Each item should be independently implementable in one Claude Code session
 - Specify the exact file path to create or modify
-- When the approach involves branching logic, enumerate the conditions
+- When the approach involves branching logic, put a decision table in "Done when"
+  (see below) rather than listing the conditions in prose
 - Code examples are encouraged for complex transformations or new patterns
 - Order tasks by dependency — items that other tasks depend on come first
+
+### Writing "Done when" and "Verify"
+
+- Write observable behavior, not a restatement of the task.
+  Bad: "SoftDeleteItem is implemented". Good: "Already DELETED item → returns AlreadyDeleted"
+- "Tests pass" is not a criterion — it belongs in Verify, and only means something
+  when the criteria say what the tests cover
+- When the TODO involves conditional logic, write "Done when" as a decision table.
+  It lists every case and its expected result, so the reviewer checks the change
+  row by row and the implementing session writes one test case per row
+  - Cover all meaningful combinations; use `-` for "don't care" conditions
+  - Scope the table to this TODO only — columns that only distinguish between
+    TODOs (such as an "Action" column) belong in separate TODOs' tables
+- When a rule applies to several TODOs (e.g. a permission matrix every endpoint
+  must follow), do not copy the table into each one. Put it under Verification →
+  Shared Decision Tables and cite it ("Done when: Shared table *Permissions* rows #1–#4 hold")
+- Verify should be one command or a short, concrete manual check
+  (e.g. "`curl -X DELETE /items/1` returns 204, then `GET /items` omits it")
+- A layer-only TODO is fine as long as its "Done when" can be checked at that layer.
+  If even that is impossible (e.g. a constant nothing reads yet), merge it into the
+  TODO in the same layer that first uses it
 
 ## 4. References
 
@@ -122,21 +189,19 @@ and external documents. Include the reason each reference is relevant.
 
 ## 5. Verification
 
-Include a decision table (when applicable) and test commands.
+Per-TODO checks (including their decision tables) live on each TODO.
+This section covers what only holds once all TODOs are done, plus any decision
+table shared by several TODOs.
 
-### Decision Table
+### End-to-End Check
 
-Use when the feature involves complex conditional logic.
-The table helps both implementation and test case design.
+How to confirm the What section's "Done" once every TODO is complete.
+Per-TODO checks can all pass while the pieces still fail to fit together.
 
 ```markdown
-### Decision Table
+### End-to-End Check
 
-| Condition A | Condition B | Condition C | Expected Result |
-|-------------|-------------|-------------|-----------------|
-| Y           | Y           | -           | Result 1        |
-| Y           | N           | Y           | Result 2        |
-| N           | -           | -           | Result 3        |
+<steps that exercise the feature through its real entry point>
 ```
 
 ### Test Commands
@@ -149,6 +214,24 @@ Adapt to the project's language and test framework.
 
 <test runner command for the relevant module>
 <lint or type-check command>
+```
+
+### Shared Decision Tables (only when needed)
+
+Only for rules that several TODOs must follow. Name each table and number its rows
+so TODOs can cite them. Omit this subsection when every table fits in one TODO.
+
+```markdown
+### Shared Decision Tables
+
+#### Permissions
+
+| # | Role   | Owns Resource | Expected Result |
+|---|--------|---------------|-----------------|
+| 1 | admin  | -             | Allow           |
+| 2 | member | Y             | Allow           |
+| 3 | member | N             | Return Forbidden|
+| 4 | guest  | -             | Return Forbidden|
 ```
 
 ## Complete Example
@@ -173,25 +256,93 @@ Stop users from permanently losing items they deleted by accident.
 
 ## TODO
 
+### DDL
+
+- [ ] Add nullable deleted_at column to items
+  → `migrations/20261014_add_items_deleted_at.sql`
+  → Nullable timestamp, no default (no table rewrite, no backfill); add index on deleted_at for the purge job
+  → Done when:
+    - Migration applies and rolls back cleanly
+    - Existing rows have `deleted_at = NULL`
+    - Index `items_deleted_at_idx` exists
+  → Verify: `npm run migrate && npm run migrate:rollback && npm run migrate`
+
 ### domain
 
-- [ ] Add deleted_at field to Item entity
+- [ ] Add deletedAt to the Item entity
   → `src/domain/item.ts`
-  → Add nullable timestamp field for soft-delete tracking
+  → Nullable `Date`; derive `status` (ACTIVE / DELETED) from it
+  → Done when:
+    - Item with `deletedAt === null` has status ACTIVE
+    - Item with `deletedAt` set has status DELETED
+  → Verify: `npm test -- --grep "Item entity"`
 
 ### repository
 
-- [ ] Update ItemRepository to filter soft-deleted records
+- [ ] Filter soft-deleted records and add soft-delete / restore methods to ItemRepository
   → `src/repository/item_repository.ts`
   → Add `WHERE deleted_at IS NULL` to list query
-  → Add soft_delete method that sets deleted_at to current timestamp
+  → Add `softDelete(id)` (sets deleted_at to now) and `restore(id)` (clears it)
+  → Done when:
+    - `list()` omits items whose deleted_at is set
+    - `softDelete` then `restore` returns the item to `list()` results
+  → Verify: `npm test -- --grep "ItemRepository"`
 
 ### usecase
 
 - [ ] Implement SoftDeleteItem usecase
-  → `src/usecase/soft_delete_item.ts`
+  → `src/usecase/soft_delete_item.ts` (replaces the hard delete in `src/usecase/delete_item.ts`)
   → Validate item exists and is ACTIVE before soft-deleting
-  → Return appropriate error if item is already deleted
+  → Done when:
+
+    | Item Exists | Item Status | Expected Result           |
+    |-------------|-------------|---------------------------|
+    | Y           | ACTIVE      | Set deleted_at, return OK |
+    | Y           | DELETED     | Return AlreadyDeleted     |
+    | N           | -           | Return NotFound           |
+
+  → Verify: `npm test -- --grep "SoftDeleteItem"`
+
+- [ ] Implement RestoreItem usecase
+  → `src/usecase/restore_item.ts`
+  → Validate item exists and is DELETED before restoring
+  → Done when:
+
+    | Item Exists | Item Status | Expected Result             |
+    |-------------|-------------|-----------------------------|
+    | Y           | DELETED     | Clear deleted_at, return OK |
+    | Y           | ACTIVE      | Return AlreadyActive        |
+    | N           | -           | Return NotFound             |
+
+  → Verify: `npm test -- --grep "RestoreItem"`
+
+### handler
+
+- [ ] Expose soft-delete and restore endpoints
+  → `src/handler/item_handler.ts`
+  → `DELETE /items/:id` calls SoftDeleteItem; `POST /items/:id/restore` calls RestoreItem
+  → Done when:
+
+    | Endpoint                | Usecase Result | Response   |
+    |-------------------------|----------------|------------|
+    | DELETE /items/:id       | OK             | 204        |
+    | DELETE /items/:id       | AlreadyDeleted | 409        |
+    | POST /items/:id/restore | OK             | 200 + item |
+    | POST /items/:id/restore | AlreadyActive  | 409        |
+    | -                       | NotFound       | 404        |
+
+  → Verify: `npm test -- --grep "item_handler"`
+
+### job
+
+- [ ] Add PurgeDeletedItems job
+  → `src/job/purge_deleted_items.ts`
+  → Hard-delete rows where `deleted_at < now() - interval '30 days'`; register in the daily scheduler
+  → Done when:
+    - Items deleted more than 30 days ago are removed
+    - Items deleted 30 days ago or less are kept
+    - ACTIVE items are untouched
+  → Verify: `npm test -- --grep "PurgeDeletedItems"`
 
 ## References
 
@@ -211,18 +362,14 @@ Stop users from permanently losing items they deleted by accident.
 
 ## Verification
 
-### Decision Table
+### End-to-End Check
 
-| Item Exists | Item Status | Action      | Expected Result            |
-|-------------|-------------|-------------|----------------------------|
-| Y           | ACTIVE      | SoftDelete  | Set deleted_at, return OK  |
-| Y           | DELETED     | SoftDelete  | Return AlreadyDeleted      |
-| N           | -           | SoftDelete  | Return NotFound            |
-| Y           | DELETED     | Restore     | Clear deleted_at, return OK|
-| Y           | ACTIVE      | Restore     | Return AlreadyActive       |
+1. Delete an item via the API → it disappears from the item list
+2. Restore it → it reappears in the list
+3. Run the purge job with the clock set 31 days ahead → a deleted item is gone and restore returns NotFound
 
 ### Test Commands
 
-npm test -- --grep "SoftDelete"
+npm test
 npm run lint
 ```

@@ -3,8 +3,9 @@ name: create-plan
 description: >
   Creates a structured implementation plan in Plan Mode and copies it to the
   clipboard. The plan follows a five-section format: What (goal/purpose),
-  Requirements, TODO (grouped by module/directory), References, and
-  Verification (with decision tables). Use this skill when the user asks to
+  Requirements, TODO (split by layer such as DDL, domain, repository, each with acceptance
+  criteria and a verification step), References, and
+  Verification (end-to-end check and test commands). Use this skill when the user asks to
   "plan a feature", "create a plan", "start planning", "break down a task",
   "create TODO", "plan mode output", or wants to structure implementation
   work before coding. After generating the plan, it is automatically copied
@@ -90,8 +91,12 @@ decide what research is needed for this particular task.
 - Agent 3 (Explore): Investigate GCS bucket setup patterns in the codebase
 - Agent 4 (Plan): Analyze DNS, SSL, and deployment dependencies
 
+Always include identifying the project's layers (directories, dependency
+direction, where migrations live) in one agent's scope — the TODO section is
+split by those layers.
+
 **Example: Adding a REST API endpoint**
-- Agent 1 (Explore): Find existing API endpoint patterns and conventions
+- Agent 1 (Explore): Find existing API endpoint patterns, conventions, and the project's layer structure
 - Agent 2 (Explore): Investigate DB schema and repository layer
 - Agent 3 (Explore): Search for related test patterns and fixtures
 
@@ -110,11 +115,19 @@ first — it is the complete format specification with examples.
 
 Key points:
 - Start with What — clarify the goal and why it matters before diving into details
-- Group TODOs by module/directory
+- Split TODOs by layer, one layer per TODO, using the layers found in the codebase;
+  order the layer headings by dependency (e.g. DDL → domain → repository → usecase → handler)
+- Never mix DDL with application code in one TODO
 - Order tasks by dependency (upstream tasks first)
 - Each TODO must be completable in a single Claude Code session
+- Give every TODO a "Done when" (observable behavior the reviewer checks) and a
+  "Verify" (the command or check the implementing session runs)
+- Write each "Done when" at that layer's boundary; if even that is impossible,
+  merge the TODO into the one in the same layer that first uses it
 - Include code examples for non-trivial logic
-- Add a decision table when conditional logic is complex
+- When a TODO has conditional logic, write its "Done when" as a decision table
+  scoped to that TODO; use a shared table under Verification only for rules
+  several TODOs must follow
 - List all relevant files, PRs, and documents in References
 
 Present the draft to the user and ask for confirmation or changes.
@@ -142,4 +155,8 @@ so they can paste it into their preferred note-taking app.
 - Target file paths should be explicit: `src/repository/item_repository.ts`, not "the item repository"
 - Code examples in TODOs should be minimal but sufficient to convey the approach
 - Decision tables should cover all meaningful combinations, use `-` for "don't care" conditions
+- Do not copy a table into several TODOs — if more than one TODO needs it, make it shared
+- "Done when" states behavior, never "tests pass" or a restatement of the task
+- Every shared decision table row should be cited by at least one TODO's "Done when";
+  an uncited row means a TODO is missing
 - References should include the reason each resource is relevant
