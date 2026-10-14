@@ -41,9 +41,9 @@ Plans are persisted in your external notes, so `/clear` loses nothing.
 
 1. **What** — Goal and purpose. What to achieve and why
 2. **Requirements** — Specifications and constraints
-3. **TODO** — Tasks grouped by module/directory
+3. **TODO** — Tasks grouped by module/directory, each with "Done when" (acceptance criteria) and "Verify"
 4. **References** — Related files, PRs, and documents
-5. **Verification** — Decision tables and test commands
+5. **Verification** — Decision table, end-to-end check, and test commands
 
 ## Installation
 

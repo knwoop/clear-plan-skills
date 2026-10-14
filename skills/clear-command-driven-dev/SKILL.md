@@ -55,9 +55,13 @@ Plan Mode ──→ Copy to clipboard ──→ Paste into your notes
 ## Execution Tips
 
 - **Context loading**: When starting a TODO, provide only what Claude needs —
-  the specific task, its target files, and relevant references. Do not paste the entire plan.
+  the specific task (including its "Done when" and "Verify"), its target files,
+  relevant references, and any decision table rows it cites. Do not paste the entire plan.
 - **CLAUDE.md synergy**: Project-wide conventions belong in CLAUDE.md; task-level
   planning lives in your external notes. Do not duplicate.
+- **Verify before commit**: Run the TODO's "Verify" step and confirm each
+  "Done when" item holds before committing. Reviewers check the change against
+  the same list.
 - **Commit cadence**: Commit after each TODO completion, before `/clear`.
 - **Update before clear**: If you discover something unexpected, run `/update-plan`
   while the context is still available, then `/clear` after committing.
@@ -68,5 +72,6 @@ Plan Mode ──→ Copy to clipboard ──→ Paste into your notes
 
 - Pasting the entire plan into every session (defeats the purpose of `/clear`)
 - Skipping the plan update phase when encountering surprises
-- Making TODO items too large (if it needs multiple files across modules, split it)
+- Making TODO items too large (if one "Done when" list can't cover it, split it)
+- Making TODO items too thin to review (if it has no observable "Done when", merge it)
 - Keeping stale plans — always reflect reality in your notes

@@ -3,7 +3,8 @@ name: create-plan
 description: >
   Creates a structured implementation plan in Plan Mode and copies it to the
   clipboard. The plan follows a five-section format: What (goal/purpose),
-  Requirements, TODO (grouped by module/directory), References, and
+  Requirements, TODO (grouped by module/directory, each with acceptance
+  criteria and a verification step), References, and
   Verification (with decision tables). Use this skill when the user asks to
   "plan a feature", "create a plan", "start planning", "break down a task",
   "create TODO", "plan mode output", or wants to structure implementation
@@ -113,8 +114,12 @@ Key points:
 - Group TODOs by module/directory
 - Order tasks by dependency (upstream tasks first)
 - Each TODO must be completable in a single Claude Code session
+- Give every TODO a "Done when" (observable behavior the reviewer checks) and a
+  "Verify" (the command or check the implementing session runs)
+- If a TODO has no meaningful "Done when", merge it into the task that first uses it
 - Include code examples for non-trivial logic
-- Add a decision table when conditional logic is complex
+- Add a decision table when conditional logic is complex; number its rows so
+  TODOs can cite them ("Done when: Decision table rows #1–#3 hold")
 - List all relevant files, PRs, and documents in References
 
 Present the draft to the user and ask for confirmation or changes.
@@ -142,4 +147,7 @@ so they can paste it into their preferred note-taking app.
 - Target file paths should be explicit: `src/repository/item_repository.ts`, not "the item repository"
 - Code examples in TODOs should be minimal but sufficient to convey the approach
 - Decision tables should cover all meaningful combinations, use `-` for "don't care" conditions
+- "Done when" states behavior, never "tests pass" or a restatement of the task
+- Every decision table row should be cited by at least one TODO's "Done when";
+  an uncited row means a TODO is missing
 - References should include the reason each resource is relevant

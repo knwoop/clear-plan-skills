@@ -6,9 +6,9 @@ When creating a plan in Plan Mode, use the following five-section format.
 
 1. [What](#1-what) — goal, done criteria, scope, why now
 2. [Requirements](#2-requirements) — rules and constraints
-3. [TODO](#3-todo) — tasks grouped by module/directory
+3. [TODO](#3-todo) — tasks grouped by module/directory, each with Done when / Verify
 4. [References](#4-references) — files, PRs, documents
-5. [Verification](#5-verification) — decision table and test commands
+5. [Verification](#5-verification) — decision table, end-to-end check, test commands
 6. [Complete Example](#complete-example)
 
 ## 1. What
@@ -67,8 +67,17 @@ and not "how do we build it?" (that's TODO).
 ## 3. TODO
 
 Group tasks by module or directory.
-Each task specifies the target file and implementation approach.
+Each task specifies the target file, the implementation approach, what must be
+true when it is done, and how to check it.
 Include logic or code examples when the approach is non-trivial.
+
+Each TODO is implemented in a fresh session after `/clear` and reviewed on its own,
+so it carries its own acceptance criteria and verification:
+
+- **Done when** — for the reviewer: observable behavior that must hold after the change.
+  The reviewer checks the change against this list instead of reconstructing intent from the diff.
+- **Verify** — for the implementing session: the command or check that proves
+  the criteria hold before handing the change to review.
 
 ```markdown
 ## TODO
@@ -78,6 +87,10 @@ Include logic or code examples when the approach is non-trivial.
 - [ ] Task name
   → Target file and implementation approach
   → Include code examples as needed
+  → Done when:
+    - <observable behavior 1>
+    - <observable behavior 2>
+  → Verify: `<command that exercises the criteria>`
 
 ### <module_2>
 
@@ -86,6 +99,8 @@ Include logic or code examples when the approach is non-trivial.
   → Details of conditions or logic:
     1. If condition A → Process A
     2. If condition B → Process B
+  → Done when: Decision table rows #1–#3 hold
+  → Verify: `<command>`
 ```
 
 ### TODO Writing Guidelines
@@ -95,6 +110,21 @@ Include logic or code examples when the approach is non-trivial.
 - When the approach involves branching logic, enumerate the conditions
 - Code examples are encouraged for complex transformations or new patterns
 - Order tasks by dependency — items that other tasks depend on come first
+
+### Writing "Done when" and "Verify"
+
+- Write observable behavior, not a restatement of the task.
+  Bad: "SoftDeleteItem is implemented". Good: "Already DELETED item → returns AlreadyDeleted"
+- "Tests pass" is not a criterion — it belongs in Verify, and only means something
+  when the criteria say what the tests cover
+- When the TODO implements decision table rows, reference them by number
+  ("Decision table rows #1–#3 hold") instead of copying them. The table stays the single
+  source, so updating a row updates every TODO that cites it
+- Verify should be one command or a short, concrete manual check
+  (e.g. "`curl -X DELETE /items/1` returns 204, then `GET /items` omits it")
+- If you cannot write a meaningful "Done when", the TODO is too thin to review on its own —
+  merge it into the task that first uses it (e.g. a bare field addition merges into
+  the repository change that reads and writes it)
 
 ## 4. References
 
@@ -122,21 +152,35 @@ and external documents. Include the reason each reference is relevant.
 
 ## 5. Verification
 
-Include a decision table (when applicable) and test commands.
+Include a decision table (when applicable), the end-to-end check for the whole
+feature, and test commands. Per-TODO checks live on each TODO; this section covers
+what only holds once all TODOs are done.
 
 ### Decision Table
 
 Use when the feature involves complex conditional logic.
 The table helps both implementation and test case design.
+Number the rows so TODOs can cite them in "Done when".
 
 ```markdown
 ### Decision Table
 
-| Condition A | Condition B | Condition C | Expected Result |
-|-------------|-------------|-------------|-----------------|
-| Y           | Y           | -           | Result 1        |
-| Y           | N           | Y           | Result 2        |
-| N           | -           | -           | Result 3        |
+| # | Condition A | Condition B | Condition C | Expected Result |
+|---|-------------|-------------|-------------|-----------------|
+| 1 | Y           | Y           | -           | Result 1        |
+| 2 | Y           | N           | Y           | Result 2        |
+| 3 | N           | -           | -           | Result 3        |
+```
+
+### End-to-End Check
+
+How to confirm the What section's "Done" once every TODO is complete.
+Per-TODO checks can all pass while the pieces still fail to fit together.
+
+```markdown
+### End-to-End Check
+
+<steps that exercise the feature through its real entry point>
 ```
 
 ### Test Commands
@@ -173,25 +217,51 @@ Stop users from permanently losing items they deleted by accident.
 
 ## TODO
 
-### domain
+### db
 
-- [ ] Add deleted_at field to Item entity
-  → `src/domain/item.ts`
-  → Add nullable timestamp field for soft-delete tracking
+- [ ] Add nullable deleted_at column to items and the Item entity
+  → `migrations/20261014_add_items_deleted_at.sql`, `src/domain/item.ts`
+  → Nullable timestamp, no default; existing rows stay NULL
+  → Done when:
+    - Migration applies and rolls back cleanly
+    - Existing items load with `deletedAt === null`
+  → Verify: `npm run migrate && npm run migrate:rollback && npm run migrate && npm test -- --grep "Item"`
 
 ### repository
 
-- [ ] Update ItemRepository to filter soft-deleted records
+- [ ] Filter soft-deleted records and add soft-delete / restore methods to ItemRepository
   → `src/repository/item_repository.ts`
   → Add `WHERE deleted_at IS NULL` to list query
-  → Add soft_delete method that sets deleted_at to current timestamp
+  → Add `softDelete(id)` (sets deleted_at to now) and `restore(id)` (clears it)
+  → Done when:
+    - `list()` omits items whose deleted_at is set
+    - `softDelete` then `restore` returns the item to `list()` results
+  → Verify: `npm test -- --grep "ItemRepository"`
 
 ### usecase
 
 - [ ] Implement SoftDeleteItem usecase
-  → `src/usecase/soft_delete_item.ts`
+  → `src/usecase/soft_delete_item.ts` (replaces the hard delete in `src/usecase/delete_item.ts`)
   → Validate item exists and is ACTIVE before soft-deleting
-  → Return appropriate error if item is already deleted
+  → Done when: Decision table rows #1–#3 hold
+  → Verify: `npm test -- --grep "SoftDeleteItem"`
+
+- [ ] Implement RestoreItem usecase
+  → `src/usecase/restore_item.ts`
+  → Validate item exists and is DELETED before restoring
+  → Done when: Decision table rows #4–#6 hold
+  → Verify: `npm test -- --grep "RestoreItem"`
+
+### job
+
+- [ ] Add PurgeDeletedItems job
+  → `src/job/purge_deleted_items.ts`
+  → Hard-delete rows where `deleted_at < now() - interval '30 days'`; register in the daily scheduler
+  → Done when:
+    - Items deleted more than 30 days ago are removed
+    - Items deleted 30 days ago or less are kept
+    - ACTIVE items are untouched
+  → Verify: `npm test -- --grep "PurgeDeletedItems"`
 
 ## References
 
@@ -213,16 +283,23 @@ Stop users from permanently losing items they deleted by accident.
 
 ### Decision Table
 
-| Item Exists | Item Status | Action      | Expected Result            |
-|-------------|-------------|-------------|----------------------------|
-| Y           | ACTIVE      | SoftDelete  | Set deleted_at, return OK  |
-| Y           | DELETED     | SoftDelete  | Return AlreadyDeleted      |
-| N           | -           | SoftDelete  | Return NotFound            |
-| Y           | DELETED     | Restore     | Clear deleted_at, return OK|
-| Y           | ACTIVE      | Restore     | Return AlreadyActive       |
+| # | Item Exists | Item Status | Action      | Expected Result             |
+|---|-------------|-------------|-------------|-----------------------------|
+| 1 | Y           | ACTIVE      | SoftDelete  | Set deleted_at, return OK   |
+| 2 | Y           | DELETED     | SoftDelete  | Return AlreadyDeleted       |
+| 3 | N           | -           | SoftDelete  | Return NotFound             |
+| 4 | Y           | DELETED     | Restore     | Clear deleted_at, return OK |
+| 5 | Y           | ACTIVE      | Restore     | Return AlreadyActive        |
+| 6 | N           | -           | Restore     | Return NotFound             |
+
+### End-to-End Check
+
+1. Delete an item via the API → it disappears from the item list
+2. Restore it → it reappears in the list
+3. Run the purge job with the clock set 31 days ahead → a deleted item is gone and restore returns NotFound
 
 ### Test Commands
 
-npm test -- --grep "SoftDelete"
+npm test
 npm run lint
 ```
