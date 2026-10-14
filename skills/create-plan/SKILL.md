@@ -1,7 +1,7 @@
 ---
 name: create-plan
 description: >
-  Create a structured implementation plan in Plan Mode and copy it to the
+  Creates a structured implementation plan in Plan Mode and copies it to the
   clipboard. The plan follows a five-section format: What (goal/purpose),
   Requirements, TODO (grouped by module/directory), References, and
   Verification (with decision tables). Use this skill when the user asks to
@@ -9,6 +9,7 @@ description: >
   "create TODO", "plan mode output", or wants to structure implementation
   work before coding. After generating the plan, it is automatically copied
   to the clipboard so the user can paste it into their preferred note-taking app.
+argument-hint: "[task description]"
 ---
 
 # Create Plan
@@ -17,7 +18,8 @@ Generate a structured implementation plan and copy it to the clipboard.
 
 ## IMPORTANT: Enter Plan Mode first
 
-Before doing anything else, enter Plan Mode. Do not write or modify any code.
+Before doing anything else, enter Plan Mode (use the `EnterPlanMode` tool if
+you are not already in it). Do not write or modify any code.
 Plan Mode allows you to explore the codebase read-only and design the plan
 without making changes.
 
@@ -103,7 +105,8 @@ Wait for all agents to complete before proceeding to Phase 4.
 ## Phase 4: Present Draft Plan
 
 Synthesize the results from all subagents and the clarified requirements
-to generate a draft plan following the format in [references/plan-format.md](../../references/plan-format.md).
+to generate a draft plan. Read [references/plan-format.md](references/plan-format.md)
+first — it is the complete format specification with examples.
 
 Key points:
 - Start with What — clarify the goal and why it matters before diving into details
@@ -116,18 +119,19 @@ Key points:
 
 Present the draft to the user and ask for confirmation or changes.
 
-## Output Format
-
-See [references/plan-format.md](../../references/plan-format.md) for the complete
-format specification with examples.
-
 ## Phase 5: Finalize and Copy to Clipboard
 
-After the user confirms the plan, copy it to the clipboard using the platform-appropriate command:
-- macOS: `pbcopy`
-- Linux (X11): `xclip -selection clipboard` or `xsel --clipboard --input`
-- Linux (Wayland): `wl-copy`
-- WSL: `clip.exe`
+After the user confirms the plan, pipe it to the bundled clipboard script,
+which detects the platform (macOS, WSL, Wayland, X11):
+
+```bash
+"${CLAUDE_SKILL_DIR}/scripts/copy-to-clipboard.sh" <<'PLAN_EOF'
+<the confirmed plan>
+PLAN_EOF
+```
+
+If the script exits non-zero (no clipboard tool available), output the plan
+in a single fenced code block so the user can copy it manually.
 
 Inform the user that the plan has been copied to their clipboard
 so they can paste it into their preferred note-taking app.

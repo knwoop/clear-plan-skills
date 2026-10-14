@@ -2,6 +2,15 @@
 
 When creating a plan in Plan Mode, use the following five-section format.
 
+## Contents
+
+1. [What](#1-what) — goal, done criteria, scope, why now
+2. [Requirements](#2-requirements) — rules and constraints
+3. [TODO](#3-todo) — tasks grouped by module/directory
+4. [References](#4-references) — files, PRs, documents
+5. [Verification](#5-verification) — decision table and test commands
+6. [Complete Example](#complete-example)
+
 ## 1. What
 
 The goal of this work. What we are trying to achieve and why.
@@ -147,12 +156,13 @@ Adapt to the project's language and test framework.
 ```markdown
 ## What
 
-Allow items to be recoverable after deletion. Currently, deleting an item
-is permanent and irreversible — users who accidentally delete an item lose
-it forever. By introducing soft-delete, deleted items are hidden from
-normal listing but retained in the database for 30 days, during which
-they can be restored. Done means: users can delete and restore items,
-and hard-deleted data is automatically cleaned up after the retention period.
+Stop users from permanently losing items they deleted by accident.
+
+- Done: A deleted item disappears from lists, can be restored within 30 days,
+  and is purged automatically after that
+- Scope: Item soft-delete, restore, and the 30-day purge job
+- Out of scope: Bulk restore and an admin "trash" UI (no current demand)
+- Why now: Accidental deletions are the top support ticket category this quarter
 
 ## Requirements
 

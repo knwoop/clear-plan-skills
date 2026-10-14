@@ -56,10 +56,12 @@ Plans are persisted in your external notes, so `/clear` loses nothing.
 
 ### Manual Installation
 
+Copy all three skill directories together — `update-plan` reuses the plan format
+and clipboard script bundled in `create-plan`.
+
 ```bash
 git clone https://github.com/knwoop/clear-plan-skills.git
 cp -r clear-plan-skills/skills/* ~/.claude/skills/
-cp -r clear-plan-skills/references ~/.claude/skills/
 ```
 
 ## Usage

@@ -1,7 +1,7 @@
 ---
 name: update-plan
 description: >
-  Update an existing implementation plan based on new information discovered
+  Updates an existing implementation plan based on new information discovered
   during development. Merges the user's current plan with new findings
   (edge cases, API changes, scope changes, discovered dependencies) and
   outputs an updated plan, then copies it to the clipboard. Use this skill
@@ -10,6 +10,7 @@ description: >
   "adjust TODO", or pastes an existing plan and describes what changed.
   Also trigger when the user reports implementation surprises, blockers,
   or scope adjustments that affect the plan.
+argument-hint: "[what changed]"
 ---
 
 # Update Plan
@@ -19,7 +20,8 @@ version to the clipboard.
 
 ## IMPORTANT: Enter Plan Mode first
 
-Before doing anything else, enter Plan Mode. Do not write or modify any code.
+Before doing anything else, enter Plan Mode (use the `EnterPlanMode` tool if
+you are not already in it). Do not write or modify any code.
 Plan Mode allows you to explore the codebase read-only and revise the plan
 without making changes.
 
@@ -66,8 +68,9 @@ Apply the changes to the plan while following these rules:
 6. **Update references** — add new files, PRs, or documents discovered during work
 7. **Update requirements** — if the specifications or constraints changed
 
-Output the full updated plan following the same five-section format
-defined in [references/plan-format.md](../../references/plan-format.md).
+Output the full updated plan following the same five-section format.
+The format specification is shared with create-plan; read it at
+`${CLAUDE_SKILL_DIR}/../create-plan/references/plan-format.md`.
 
 ### Step 3: Show the Diff Summary
 
@@ -86,13 +89,17 @@ This helps the user quickly verify the update matches their intent.
 
 ### Step 4: Copy to Clipboard
 
-Copy the updated plan (without the diff summary) to the clipboard using
-the same approach as create-plan:
+Copy the updated plan (without the diff summary) to the clipboard with the
+clipboard script bundled in create-plan:
 
-- macOS: `pbcopy`
-- Linux (X11): `xclip -selection clipboard` or `xsel --clipboard --input`
-- Linux (Wayland): `wl-copy`
-- WSL: `clip.exe`
+```bash
+"${CLAUDE_SKILL_DIR}/../create-plan/scripts/copy-to-clipboard.sh" <<'PLAN_EOF'
+<the updated plan>
+PLAN_EOF
+```
+
+If the script exits non-zero (no clipboard tool available), output the plan
+in a single fenced code block so the user can copy it manually.
 
 Inform the user the updated plan is on their clipboard so they can replace
 the old version in their notes.
@@ -105,8 +112,3 @@ the old version in their notes.
 - If the user provides only partial plan text, ask for the missing sections
   before generating the update (or note assumptions clearly)
 - Keep the same format as the original plan — consistency matters for the workflow
-
-## Plan Format Reference
-
-See [references/plan-format.md](../../references/plan-format.md) for the complete
-five-section format specification (What, Requirements, TODO, References, Verification).
