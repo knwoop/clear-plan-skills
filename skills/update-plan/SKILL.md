@@ -54,6 +54,7 @@ Common types of changes:
 | Approach change | "The ORM doesn't support bulk upsert, need to use raw SQL" |
 | New dependency | "This requires a migration to add the deleted_at column first" |
 | Task splitting | "The repository TODO is too large, needs to be split" (split by feature within the layer) |
+| PR splitting | "PR 2 is too big to review" (split by behavior into PR 2 and PR 3, renumber later PRs) |
 | Completed items | "I finished the domain and repository tasks" |
 | Criteria change | "Restore should also work on items deleted by an admin" |
 
@@ -114,7 +115,8 @@ the old version in their notes.
 - Do not alter completed `[x]` items unless the user explicitly asks
 - When splitting a TODO, preserve the original intent and add sub-tasks;
   divide the original "Done when" between them so no criterion is lost
-- If the change invalidates a decision table row, update it — don't just add rows
+- If the change invalidates a decision table row, update it — don't just add rows.
+  Keep conditions as yes/no questions and re-check that every combination is covered
 - If the user provides only partial plan text, ask for the missing sections
   before generating the update (or note assumptions clearly)
 - Keep the same format as the original plan — consistency matters for the workflow

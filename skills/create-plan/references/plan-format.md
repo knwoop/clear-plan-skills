@@ -6,7 +6,7 @@ When creating a plan in Plan Mode, use the following five-section format.
 
 1. [What](#1-what) — goal, done criteria, scope, why now
 2. [Requirements](#2-requirements) — rules and constraints
-3. [TODO](#3-todo) — tasks split by layer (DDL, domain, repository, …), each with Done when / Verify
+3. [TODO](#3-todo) — PRs, each split into layer TODOs (DDL, domain, repository, …) with Done when / Verify
 4. [References](#4-references) — files, PRs, documents
 5. [Verification](#5-verification) — end-to-end check, test commands, shared decision tables
 6. [Complete Example](#complete-example)
@@ -66,9 +66,14 @@ and not "how do we build it?" (that's TODO).
 
 ## 3. TODO
 
-Split tasks by layer — one TODO changes one layer, so each TODO is reviewed
-with one kind of expertise (migration safety for DDL, business rules for usecases,
-API contracts for handlers). Headings name the layers in dependency order.
+Group the work into PRs, and split each PR into TODOs by layer:
+
+- **PR** — the review and merge unit. One purpose, stated in one line, that a reviewer
+  can review in one sitting and that can merge and deploy on its own
+- **Layer** — inside a PR, one heading per layer in dependency order. One TODO changes
+  one layer, so each TODO is reviewed with one kind of expertise (migration safety for
+  DDL, business rules for usecases, API contracts for handlers)
+
 Each task specifies the target file, the implementation approach, what must be
 true when it is done, and how to check it.
 Include logic or code examples when the approach is non-trivial.
@@ -84,7 +89,9 @@ so it carries its own acceptance criteria and verification:
 ```markdown
 ## TODO
 
-### <layer_1> (e.g. DDL)
+### PR 1: <scope>: <one-line purpose>
+
+#### <layer_1> (e.g. DDL)
 
 - [ ] Task name
   → Target file and implementation approach
@@ -94,20 +101,38 @@ so it carries its own acceptance criteria and verification:
     - <observable behavior 2>
   → Verify: `<command that exercises the criteria>`
 
-### <layer_2> (e.g. usecase)
+### PR 2: <scope>: <one-line purpose>
+
+→ Starts after: <only if gated on something beyond PR order, e.g. PR 1 released>
+
+#### <layer_2> (e.g. usecase)
 
 - [ ] Task name
   → Implementation approach (can be multiple lines)
   → Done when:
 
-    | Condition A | Condition B | Expected Result |
-    |-------------|-------------|-----------------|
-    | Y           | Y           | Result 1        |
-    | Y           | N           | Result 2        |
-    | N           | -           | Result 3        |
+    | <Condition A>? | <Condition B>? | Expected Result |
+    |----------------|----------------|-----------------|
+    | Y              | Y              | Result 1        |
+    | Y              | N              | Result 2        |
+    | N              | -              | Result 3        |
 
   → Verify: `<command>` (one test case per row)
 ```
+
+### Splitting into PRs
+
+- **One purpose per PR.** Write the heading as `PR <n>: <scope>: <one-line purpose>`,
+  where the purpose says what changes for users or operators, not which files change
+- **Each PR merges and deploys on its own** — tests pass and nothing is half-wired
+  after it merges. Number PRs in dependency order
+- **Give DDL its own PR** when the migration must be deployed before the code that
+  uses it, or when your team reviews migrations separately
+- **Split a feature across PRs by behavior**, e.g. soft-delete in one PR and restore
+  in the next, each going through all the layers it needs
+- **Add "Starts after"** only when a PR waits on something other than the previous PR
+  merging (a release, a metric, a manual step)
+- **A small task is still `PR 1`** — keep the heading so the structure stays the same
 
 ### Splitting by Layer
 
@@ -115,13 +140,13 @@ so it carries its own acceptance criteria and verification:
   (e.g. `migrations/`, `internal/domain`, `internal/repository`, `internal/usecase`,
   `internal/handler`), not from a template. For projects without application layers,
   use the equivalent units of responsibility (e.g. Terraform module, CI config, app code)
-- **Order headings by dependency.** A typical order is
+- **Order layer headings by dependency within each PR.** A typical order is
   DDL → domain → repository → usecase → handler → job / infra
 - **One TODO changes one layer.** Never mix DDL with application code in one TODO —
   migrations are reviewed for locks, backward compatibility, and rollback, and often
   deploy separately
-- **Split a large layer change by feature within that layer**, not across layers
-  (e.g. two usecase TODOs: SoftDeleteItem and RestoreItem)
+- **Split a large layer change by feature within that layer**, not across layers;
+  if the PR is still too large to review in one sitting, split the PR
 - **Write "Done when" at the layer's boundary** — what that layer exposes,
   tested with that layer's tests:
 
@@ -150,10 +175,8 @@ so it carries its own acceptance criteria and verification:
   when the criteria say what the tests cover
 - When the TODO involves conditional logic, write "Done when" as a decision table.
   It lists every case and its expected result, so the reviewer checks the change
-  row by row and the implementing session writes one test case per row
-  - Cover all meaningful combinations; use `-` for "don't care" conditions
-  - Scope the table to this TODO only — columns that only distinguish between
-    TODOs (such as an "Action" column) belong in separate TODOs' tables
+  row by row and the implementing session writes one test case per row.
+  See [Decision Tables](#decision-tables) below
 - When a rule applies to several TODOs (e.g. a permission matrix every endpoint
   must follow), do not copy the table into each one. Put it under Verification →
   Shared Decision Tables and cite it ("Done when: Shared table *Permissions* rows #1–#4 hold")
@@ -162,6 +185,28 @@ so it carries its own acceptance criteria and verification:
 - A layer-only TODO is fine as long as its "Done when" can be checked at that layer.
   If even that is impossible (e.g. a constant nothing reads yet), merge it into the
   TODO in the same layer that first uses it
+
+### Decision Tables
+
+- **Every condition is a yes/no question.** Name the column as a question ending in `?`
+  ("Item exists?", "Session expired?") and fill cells with `Y`, `N`, or `-` (don't care).
+  Labels like "valid / expired" or "ACTIVE / DELETED" leave room for interpretation;
+  a yes/no answer does not
+- **Give every question an exact threshold.** "Session expired?" must be defined
+  precisely somewhere — "`auth_time + 3 days - 5 min` has passed", not "a few minutes".
+  A reviewer must be able to answer Y or N for any input
+- **Cover every combination exactly once.** With n questions there are 2^n combinations;
+  after expanding `-`, each must match exactly one row. Counting rows this way is how
+  the reviewer spots gaps
+- **Order columns so earlier answers make later ones irrelevant** (e.g. "Item exists?"
+  before "Already deleted?"), which keeps `-` doing the work instead of extra rows
+- **Write impossible combinations as rows**, with the result `— (cannot happen: <reason>)`,
+  so the reviewer can see they were considered
+- **Results stay free text.** If a row triggers several actions, list them all
+- **Mapping tables are the exception.** When the table maps one value to another
+  (usecase result → HTTP status), use value columns instead of questions
+- **Scope the table to one TODO.** A column that only says which TODO or which moment
+  a row belongs to ("Action", "When") means the table should be split per TODO
 
 ## 4. References
 
@@ -220,18 +265,20 @@ Adapt to the project's language and test framework.
 
 Only for rules that several TODOs must follow. Name each table and number its rows
 so TODOs can cite them. Omit this subsection when every table fits in one TODO.
+If the rows split cleanly by TODO or by moment ("before render" vs "before send"),
+the table is not shared — move each part into its TODO.
 
 ```markdown
 ### Shared Decision Tables
 
 #### Permissions
 
-| # | Role   | Owns Resource | Expected Result |
-|---|--------|---------------|-----------------|
-| 1 | admin  | -             | Allow           |
-| 2 | member | Y             | Allow           |
-| 3 | member | N             | Return Forbidden|
-| 4 | guest  | -             | Return Forbidden|
+| # | Admin? | Member of the team? | Owns resource? | Expected Result  |
+|---|--------|---------------------|----------------|------------------|
+| 1 | Y      | -                   | -              | Allow            |
+| 2 | N      | Y                   | Y              | Allow            |
+| 3 | N      | Y                   | N              | Return Forbidden |
+| 4 | N      | N                   | -              | Return Forbidden |
 ```
 
 ## Complete Example
@@ -256,7 +303,9 @@ Stop users from permanently losing items they deleted by accident.
 
 ## TODO
 
-### DDL
+### PR 1: items: add deleted_at column
+
+#### DDL
 
 - [ ] Add nullable deleted_at column to items
   → `migrations/20261014_add_items_deleted_at.sql`
@@ -267,7 +316,9 @@ Stop users from permanently losing items they deleted by accident.
     - Index `items_deleted_at_idx` exists
   → Verify: `npm run migrate && npm run migrate:rollback && npm run migrate`
 
-### domain
+### PR 2: items: deleting an item hides it instead of removing it
+
+#### domain
 
 - [ ] Add deletedAt to the Item entity
   → `src/domain/item.ts`
@@ -277,71 +328,100 @@ Stop users from permanently losing items they deleted by accident.
     - Item with `deletedAt` set has status DELETED
   → Verify: `npm test -- --grep "Item entity"`
 
-### repository
+#### repository
 
-- [ ] Filter soft-deleted records and add soft-delete / restore methods to ItemRepository
+- [ ] Filter soft-deleted records and add softDelete to ItemRepository
   → `src/repository/item_repository.ts`
   → Add `WHERE deleted_at IS NULL` to list query
-  → Add `softDelete(id)` (sets deleted_at to now) and `restore(id)` (clears it)
+  → Add `softDelete(id)` that sets deleted_at to now
   → Done when:
     - `list()` omits items whose deleted_at is set
-    - `softDelete` then `restore` returns the item to `list()` results
+    - `softDelete` sets deleted_at and leaves the row in the table
   → Verify: `npm test -- --grep "ItemRepository"`
 
-### usecase
+#### usecase
 
 - [ ] Implement SoftDeleteItem usecase
   → `src/usecase/soft_delete_item.ts` (replaces the hard delete in `src/usecase/delete_item.ts`)
-  → Validate item exists and is ACTIVE before soft-deleting
   → Done when:
 
-    | Item Exists | Item Status | Expected Result           |
-    |-------------|-------------|---------------------------|
-    | Y           | ACTIVE      | Set deleted_at, return OK |
-    | Y           | DELETED     | Return AlreadyDeleted     |
-    | N           | -           | Return NotFound           |
+    | Item exists? | Already deleted? | Expected Result           |
+    |--------------|------------------|---------------------------|
+    | Y            | N                | Set deleted_at, return OK |
+    | Y            | Y                | Return AlreadyDeleted     |
+    | N            | -                | Return NotFound           |
 
   → Verify: `npm test -- --grep "SoftDeleteItem"`
 
+#### handler
+
+- [ ] Route DELETE /items/:id to SoftDeleteItem
+  → `src/handler/item_handler.ts`
+  → Done when (mapping):
+
+    | Usecase Result | Response |
+    |----------------|----------|
+    | OK             | 204      |
+    | AlreadyDeleted | 409      |
+    | NotFound       | 404      |
+
+  → Verify: `npm test -- --grep "item_handler delete"`
+
+### PR 3: items: restore a deleted item
+
+#### repository
+
+- [ ] Add restore to ItemRepository
+  → `src/repository/item_repository.ts`
+  → Add `restore(id)` that clears deleted_at
+  → Done when: `softDelete` then `restore` returns the item to `list()` results
+  → Verify: `npm test -- --grep "ItemRepository"`
+
+#### usecase
+
 - [ ] Implement RestoreItem usecase
   → `src/usecase/restore_item.ts`
-  → Validate item exists and is DELETED before restoring
   → Done when:
 
-    | Item Exists | Item Status | Expected Result             |
-    |-------------|-------------|-----------------------------|
-    | Y           | DELETED     | Clear deleted_at, return OK |
-    | Y           | ACTIVE      | Return AlreadyActive        |
-    | N           | -           | Return NotFound             |
+    | Item exists? | Deleted? | Expected Result             |
+    |--------------|----------|-----------------------------|
+    | Y            | Y        | Clear deleted_at, return OK |
+    | Y            | N        | Return AlreadyActive        |
+    | N            | -        | Return NotFound             |
 
   → Verify: `npm test -- --grep "RestoreItem"`
 
-### handler
+#### handler
 
-- [ ] Expose soft-delete and restore endpoints
+- [ ] Add POST /items/:id/restore
   → `src/handler/item_handler.ts`
-  → `DELETE /items/:id` calls SoftDeleteItem; `POST /items/:id/restore` calls RestoreItem
-  → Done when:
+  → Done when (mapping):
 
-    | Endpoint                | Usecase Result | Response   |
-    |-------------------------|----------------|------------|
-    | DELETE /items/:id       | OK             | 204        |
-    | DELETE /items/:id       | AlreadyDeleted | 409        |
-    | POST /items/:id/restore | OK             | 200 + item |
-    | POST /items/:id/restore | AlreadyActive  | 409        |
-    | -                       | NotFound       | 404        |
+    | Usecase Result | Response   |
+    |----------------|------------|
+    | OK             | 200 + item |
+    | AlreadyActive  | 409        |
+    | NotFound       | 404        |
 
-  → Verify: `npm test -- --grep "item_handler"`
+  → Verify: `npm test -- --grep "item_handler restore"`
 
-### job
+### PR 4: items: purge items deleted more than 30 days ago
+
+→ Starts after: PR 3 released, so users can still restore within the 30 days
+
+#### job
 
 - [ ] Add PurgeDeletedItems job
   → `src/job/purge_deleted_items.ts`
   → Hard-delete rows where `deleted_at < now() - interval '30 days'`; register in the daily scheduler
   → Done when:
-    - Items deleted more than 30 days ago are removed
-    - Items deleted 30 days ago or less are kept
-    - ACTIVE items are untouched
+
+    | Deleted? | `deleted_at` older than 30 days (720 h)? | Expected Result |
+    |----------|------------------------------------------|-----------------|
+    | N        | -                                        | Keep            |
+    | Y        | N                                        | Keep            |
+    | Y        | Y                                        | Remove the row  |
+
   → Verify: `npm test -- --grep "PurgeDeletedItems"`
 
 ## References

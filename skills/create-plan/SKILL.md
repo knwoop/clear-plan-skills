@@ -3,7 +3,7 @@ name: create-plan
 description: >
   Creates a structured implementation plan in Plan Mode and copies it to the
   clipboard. The plan follows a five-section format: What (goal/purpose),
-  Requirements, TODO (split by layer such as DDL, domain, repository, each with acceptance
+  Requirements, TODO (PRs split into layer TODOs such as DDL, domain, repository, each with acceptance
   criteria and a verification step), References, and
   Verification (end-to-end check and test commands). Use this skill when the user asks to
   "plan a feature", "create a plan", "start planning", "break down a task",
@@ -115,8 +115,10 @@ first — it is the complete format specification with examples.
 
 Key points:
 - Start with What — clarify the goal and why it matters before diving into details
-- Split TODOs by layer, one layer per TODO, using the layers found in the codebase;
-  order the layer headings by dependency (e.g. DDL → domain → repository → usecase → handler)
+- Group TODOs into PRs (`### PR <n>: <scope>: <one-line purpose>`), each one reviewable
+  purpose that merges and deploys on its own, numbered in dependency order
+- Inside each PR, split TODOs by layer, one layer per TODO, using the layers found in the
+  codebase; order the layer headings by dependency (e.g. DDL → domain → repository → usecase → handler)
 - Never mix DDL with application code in one TODO
 - Order tasks by dependency (upstream tasks first)
 - Each TODO must be completable in a single Claude Code session
@@ -126,8 +128,8 @@ Key points:
   merge the TODO into the one in the same layer that first uses it
 - Include code examples for non-trivial logic
 - When a TODO has conditional logic, write its "Done when" as a decision table
-  scoped to that TODO; use a shared table under Verification only for rules
-  several TODOs must follow
+  scoped to that TODO, with every condition as a yes/no question (`Y` / `N` / `-`);
+  use a shared table under Verification only for rules several TODOs must follow
 - List all relevant files, PRs, and documents in References
 
 Present the draft to the user and ask for confirmation or changes.
@@ -154,7 +156,8 @@ so they can paste it into their preferred note-taking app.
 - Write TODO items as imperative actions: "Add field X to struct Y", not "Field X should be added"
 - Target file paths should be explicit: `src/repository/item_repository.ts`, not "the item repository"
 - Code examples in TODOs should be minimal but sufficient to convey the approach
-- Decision tables should cover all meaningful combinations, use `-` for "don't care" conditions
+- Decision tables cover every yes/no combination exactly once, use `-` for "don't care",
+  and give each question an exact threshold (no "a few minutes")
 - Do not copy a table into several TODOs — if more than one TODO needs it, make it shared
 - "Done when" states behavior, never "tests pass" or a restatement of the task
 - Every shared decision table row should be cited by at least one TODO's "Done when";
