@@ -5,7 +5,7 @@ description: >
   clipboard. The plan follows a five-section format: What (goal/purpose),
   Requirements, TODO (grouped by module/directory, each with acceptance
   criteria and a verification step), References, and
-  Verification (with decision tables). Use this skill when the user asks to
+  Verification (end-to-end check and test commands). Use this skill when the user asks to
   "plan a feature", "create a plan", "start planning", "break down a task",
   "create TODO", "plan mode output", or wants to structure implementation
   work before coding. After generating the plan, it is automatically copied
@@ -118,8 +118,9 @@ Key points:
   "Verify" (the command or check the implementing session runs)
 - If a TODO has no meaningful "Done when", merge it into the task that first uses it
 - Include code examples for non-trivial logic
-- Add a decision table when conditional logic is complex; number its rows so
-  TODOs can cite them ("Done when: Decision table rows #1–#3 hold")
+- When a TODO has conditional logic, write its "Done when" as a decision table
+  scoped to that TODO; use a shared table under Verification only for rules
+  several TODOs must follow
 - List all relevant files, PRs, and documents in References
 
 Present the draft to the user and ask for confirmation or changes.
@@ -147,7 +148,8 @@ so they can paste it into their preferred note-taking app.
 - Target file paths should be explicit: `src/repository/item_repository.ts`, not "the item repository"
 - Code examples in TODOs should be minimal but sufficient to convey the approach
 - Decision tables should cover all meaningful combinations, use `-` for "don't care" conditions
+- Do not copy a table into several TODOs — if more than one TODO needs it, make it shared
 - "Done when" states behavior, never "tests pass" or a restatement of the task
-- Every decision table row should be cited by at least one TODO's "Done when";
+- Every shared decision table row should be cited by at least one TODO's "Done when";
   an uncited row means a TODO is missing
 - References should include the reason each resource is relevant

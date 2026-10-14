@@ -65,12 +65,13 @@ Apply the changes to the plan while following these rules:
 2. **Mark removed items** — Use ~~strikethrough~~ with a reason, don't silently delete
 3. **Add new items at the correct dependency position** — not just appended at the end
 4. **Update What** — if the goal or scope fundamentally changed, revise it
-5. **Update the decision table** — if edge cases changed, the table must reflect it
+5. **Update the decision tables** — if edge cases changed, update the table in the
+   affected TODO's "Done when" (or the shared table, if several TODOs follow it)
 6. **Update references** — add new files, PRs, or documents discovered during work
 7. **Update requirements** — if the specifications or constraints changed
 8. **Keep "Done when" and "Verify" in sync** — when a TODO's approach or scope changes,
-   or a decision table row is added, removed, or renumbered, update every open TODO's
-   "Done when" that cites it. New TODOs need both fields
+   update its "Done when" and "Verify". When a shared decision table row is added,
+   removed, or renumbered, update every open TODO that cites it. New TODOs need both fields
 
 Output the full updated plan following the same five-section format.
 The format specification is shared with create-plan; read it at

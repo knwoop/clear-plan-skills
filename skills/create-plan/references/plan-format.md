@@ -8,7 +8,7 @@ When creating a plan in Plan Mode, use the following five-section format.
 2. [Requirements](#2-requirements) — rules and constraints
 3. [TODO](#3-todo) — tasks grouped by module/directory, each with Done when / Verify
 4. [References](#4-references) — files, PRs, documents
-5. [Verification](#5-verification) — decision table, end-to-end check, test commands
+5. [Verification](#5-verification) — end-to-end check, test commands, shared decision tables
 6. [Complete Example](#complete-example)
 
 ## 1. What
@@ -96,18 +96,23 @@ so it carries its own acceptance criteria and verification:
 
 - [ ] Task name
   → Implementation approach (can be multiple lines)
-  → Details of conditions or logic:
-    1. If condition A → Process A
-    2. If condition B → Process B
-  → Done when: Decision table rows #1–#3 hold
-  → Verify: `<command>`
+  → Done when:
+
+    | Condition A | Condition B | Expected Result |
+    |-------------|-------------|-----------------|
+    | Y           | Y           | Result 1        |
+    | Y           | N           | Result 2        |
+    | N           | -           | Result 3        |
+
+  → Verify: `<command>` (one test case per row)
 ```
 
 ### TODO Writing Guidelines
 
 - Each item should be independently implementable in one Claude Code session
 - Specify the exact file path to create or modify
-- When the approach involves branching logic, enumerate the conditions
+- When the approach involves branching logic, put a decision table in "Done when"
+  (see below) rather than listing the conditions in prose
 - Code examples are encouraged for complex transformations or new patterns
 - Order tasks by dependency — items that other tasks depend on come first
 
@@ -117,9 +122,15 @@ so it carries its own acceptance criteria and verification:
   Bad: "SoftDeleteItem is implemented". Good: "Already DELETED item → returns AlreadyDeleted"
 - "Tests pass" is not a criterion — it belongs in Verify, and only means something
   when the criteria say what the tests cover
-- When the TODO implements decision table rows, reference them by number
-  ("Decision table rows #1–#3 hold") instead of copying them. The table stays the single
-  source, so updating a row updates every TODO that cites it
+- When the TODO involves conditional logic, write "Done when" as a decision table.
+  It lists every case and its expected result, so the reviewer checks the change
+  row by row and the implementing session writes one test case per row
+  - Cover all meaningful combinations; use `-` for "don't care" conditions
+  - Scope the table to this TODO only — columns that only distinguish between
+    TODOs (such as an "Action" column) belong in separate TODOs' tables
+- When a rule applies to several TODOs (e.g. a permission matrix every endpoint
+  must follow), do not copy the table into each one. Put it under Verification →
+  Shared Decision Tables and cite it ("Done when: Shared table *Permissions* rows #1–#4 hold")
 - Verify should be one command or a short, concrete manual check
   (e.g. "`curl -X DELETE /items/1` returns 204, then `GET /items` omits it")
 - If you cannot write a meaningful "Done when", the TODO is too thin to review on its own —
@@ -152,25 +163,9 @@ and external documents. Include the reason each reference is relevant.
 
 ## 5. Verification
 
-Include a decision table (when applicable), the end-to-end check for the whole
-feature, and test commands. Per-TODO checks live on each TODO; this section covers
-what only holds once all TODOs are done.
-
-### Decision Table
-
-Use when the feature involves complex conditional logic.
-The table helps both implementation and test case design.
-Number the rows so TODOs can cite them in "Done when".
-
-```markdown
-### Decision Table
-
-| # | Condition A | Condition B | Condition C | Expected Result |
-|---|-------------|-------------|-------------|-----------------|
-| 1 | Y           | Y           | -           | Result 1        |
-| 2 | Y           | N           | Y           | Result 2        |
-| 3 | N           | -           | -           | Result 3        |
-```
+Per-TODO checks (including their decision tables) live on each TODO.
+This section covers what only holds once all TODOs are done, plus any decision
+table shared by several TODOs.
 
 ### End-to-End Check
 
@@ -193,6 +188,24 @@ Adapt to the project's language and test framework.
 
 <test runner command for the relevant module>
 <lint or type-check command>
+```
+
+### Shared Decision Tables (only when needed)
+
+Only for rules that several TODOs must follow. Name each table and number its rows
+so TODOs can cite them. Omit this subsection when every table fits in one TODO.
+
+```markdown
+### Shared Decision Tables
+
+#### Permissions
+
+| # | Role   | Owns Resource | Expected Result |
+|---|--------|---------------|-----------------|
+| 1 | admin  | -             | Allow           |
+| 2 | member | Y             | Allow           |
+| 3 | member | N             | Return Forbidden|
+| 4 | guest  | -             | Return Forbidden|
 ```
 
 ## Complete Example
@@ -243,13 +256,27 @@ Stop users from permanently losing items they deleted by accident.
 - [ ] Implement SoftDeleteItem usecase
   → `src/usecase/soft_delete_item.ts` (replaces the hard delete in `src/usecase/delete_item.ts`)
   → Validate item exists and is ACTIVE before soft-deleting
-  → Done when: Decision table rows #1–#3 hold
+  → Done when:
+
+    | Item Exists | Item Status | Expected Result           |
+    |-------------|-------------|---------------------------|
+    | Y           | ACTIVE      | Set deleted_at, return OK |
+    | Y           | DELETED     | Return AlreadyDeleted     |
+    | N           | -           | Return NotFound           |
+
   → Verify: `npm test -- --grep "SoftDeleteItem"`
 
 - [ ] Implement RestoreItem usecase
   → `src/usecase/restore_item.ts`
   → Validate item exists and is DELETED before restoring
-  → Done when: Decision table rows #4–#6 hold
+  → Done when:
+
+    | Item Exists | Item Status | Expected Result             |
+    |-------------|-------------|-----------------------------|
+    | Y           | DELETED     | Clear deleted_at, return OK |
+    | Y           | ACTIVE      | Return AlreadyActive        |
+    | N           | -           | Return NotFound             |
+
   → Verify: `npm test -- --grep "RestoreItem"`
 
 ### job
@@ -280,17 +307,6 @@ Stop users from permanently losing items they deleted by accident.
 - https://notion.so/item-soft-delete-design → Design Doc
 
 ## Verification
-
-### Decision Table
-
-| # | Item Exists | Item Status | Action      | Expected Result             |
-|---|-------------|-------------|-------------|-----------------------------|
-| 1 | Y           | ACTIVE      | SoftDelete  | Set deleted_at, return OK   |
-| 2 | Y           | DELETED     | SoftDelete  | Return AlreadyDeleted       |
-| 3 | N           | -           | SoftDelete  | Return NotFound             |
-| 4 | Y           | DELETED     | Restore     | Clear deleted_at, return OK |
-| 5 | Y           | ACTIVE      | Restore     | Return AlreadyActive        |
-| 6 | N           | -           | Restore     | Return NotFound             |
 
 ### End-to-End Check
 

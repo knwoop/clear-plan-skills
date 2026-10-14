@@ -56,7 +56,7 @@ Plan Mode ──→ Copy to clipboard ──→ Paste into your notes
 
 - **Context loading**: When starting a TODO, provide only what Claude needs —
   the specific task (including its "Done when" and "Verify"), its target files,
-  relevant references, and any decision table rows it cites. Do not paste the entire plan.
+  relevant references, and any shared decision table rows it cites. Do not paste the entire plan.
 - **CLAUDE.md synergy**: Project-wide conventions belong in CLAUDE.md; task-level
   planning lives in your external notes. Do not duplicate.
 - **Verify before commit**: Run the TODO's "Verify" step and confirm each
